@@ -12,7 +12,7 @@ RHO = 1.225  # Плотность воздуха (кг/м³)
 CD = 0.47  # Коэффициент сопротивления воздуха (для сферы)
 CM = 0.2  # Коэффициент Магнуса
 COR = 0.8 # Коэффициент восстановления мяча о поверхность зала
-MU = 0.3 # Коэффициент трения
+MU = 0.1 # Коэффициент трения
 GRAVITY = np.array([0.0, 0.0, -9.81])  # Гравитация
 BALL_RADIUS = 0.2 # Радиус мяча
 BALL_MASS = 0.6 # Масса мяча
@@ -24,7 +24,7 @@ FIELD_LENGTH = 5 # Длина поля
 def acceleration(v, r, m, omega):
     A = np.pi * r**2  # Площадь поперечного сечения
     drag = -0.5 * RHO * np.linalg.norm(v) * np.array(v) * CD * A / m
-    magnus = 0.5 * RHO * np.linalg.norm(v) * np.cross(omega, v) * CM * A / m  
+    magnus = RHO * np.cross(omega, v) * (4/3) * np.pi * r**3 / m
     return np.array(GRAVITY + drag + magnus)
 
 
@@ -309,7 +309,7 @@ def main():
     last_mouse_pos = [0, 0]
     camera_rotation = [0, 0]  # Вращение камеры (X, Y)
     ball_pos = np.array([0, 0, BALL_RADIUS])  # Начальная позиция
-    omega = np.array([0.0, 10.0, 10.0])  # Угловая скорость (рад/с) — убираем вращение
+    omega = np.array([0.0, -10.0, 0.0])  # Угловая скорость (рад/с)
     
     update_visual_OpenGL(camera_rotation)
     glColor3f(1.0, 0.0, 0.0)  # Красный цвет
@@ -335,7 +335,7 @@ def main():
     clock = pygame.time.Clock()
     running = True
     frames_since_last_plot_update = 0
-    plot_update_interval = 10
+    plot_update_interval = 1
     rotation_angle = 0
 
     while running:
@@ -366,7 +366,11 @@ def main():
 
         # Рисование мячика с вращением
         glColor3f(1.0, 0.0, 0.0)  # Красный цвет
-        draw_sphere(ball_pos, BALL_RADIUS, rotation_angle=rotation_angle, rotation_axis=omega / np.linalg.norm(omega))
+        draw_sphere(
+            ball_pos, BALL_RADIUS,
+            rotation_angle=rotation_angle,
+            rotation_axis=omega / np.linalg.norm(omega)
+        )
 
         
         glPopMatrix()  # Возвращаем камеру в исходное состояние
