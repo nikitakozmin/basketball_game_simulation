@@ -33,25 +33,35 @@ def acceleration(v, r, m, omega):
 # Явный метод Эйлера
 def euler_method(ball_velocity, ball_position, dt, omega):
     a = acceleration(ball_velocity, BALL_RADIUS, BALL_MASS, omega)
-    ball_velocity += a * dt
-    ball_position += ball_velocity * dt
-    return ball_velocity, ball_position
+    
+    ball_position_new = ball_position + ball_velocity * dt
+    ball_velocity_new = ball_velocity + a * dt
+    
+
+    return ball_velocity_new, ball_position_new
 
 
 # Неявный метод Эйлера
 def implicit_euler_method(dt, ball_velocity, ball_position, omega):
     ball_velocity_next = ball_velocity.copy()
+    ball_position_next = ball_position.copy()
+
     for _ in range(10):  # Ограничиваем количество итераций
         # Вычисление ускорения на следующем шаге
         a_next = acceleration(ball_velocity_next, BALL_RADIUS, BALL_MASS, omega)
+        
         # Обновление скорости и позиции на следующем шаге
         ball_velocity_next_new = ball_velocity + a_next * dt
-        ball_position_next = ball_position + ball_velocity_next_new * dt
+        ball_position_next_new = ball_position + ball_velocity_next_new * dt
 
-        if np.linalg.norm(ball_velocity_next_new - ball_velocity_next) < 1e-6:
+        velocity_diff = np.linalg.norm(ball_velocity_next_new - ball_velocity_next)
+        position_diff = np.linalg.norm(ball_position_next_new - ball_position_next)
+
+        if velocity_diff < 1e-6 and position_diff < 1e-6:
             break
         
         ball_velocity_next = ball_velocity_next_new
+        ball_position_next = ball_position_next_new
 
     return ball_velocity_next, ball_position_next
     
@@ -73,24 +83,41 @@ def runge_kutta_4(ball_velocity, ball_position, ball_mass, dt, omega):
 
 
 # Адаптивный метод
-def adaptive_step_method(ball_velocity, ball_position, dt, omega):
-    k1v = acceleration(ball_velocity, BALL_RADIUS, BALL_MASS, omega) * dt
-    k1x = ball_velocity * dt
-    k2v = acceleration(ball_velocity + 0.5 * k1v, BALL_RADIUS, BALL_MASS, omega) * dt
-    k2x = (ball_velocity + 0.5 * k1v) * dt
-    k3v = acceleration(ball_velocity + 0.5 * k2v, BALL_RADIUS, BALL_MASS, omega) * dt
-    k3x = (ball_velocity + 0.5 * k2v) * dt
-    k4v = acceleration(ball_velocity + k3v, BALL_RADIUS, BALL_MASS, omega) * dt
-    k4x = (ball_velocity + k3v) * dt
+def adaptive_step_method(ball_velocity, ball_position, dt, omega, tolerance=1e-4, b=1e-5):
+    a21 = 1/2
+    a32 = 3/4
+    b1, b2, b3 = 2/9, 1/3, 4/9
+    d1, d2, d3, d4 = 7/24, 1/4, 1/3, 1/8
 
-    ball_velocity_new = ball_velocity + (k1v + 2 * k2v + 2 * k3v + k4v) / 6
-    ball_position_new = ball_position + (k1x + 2 * k2x + 2 * k3x + k4x) / 6
+    k1v = acceleration(ball_velocity, BALL_RADIUS, BALL_MASS, omega)
+    k1x = ball_velocity
 
-    error = np.linalg.norm(ball_position_new - ball_position)  # Оценка ошибки
-    if error < 1e-3:  # Если ошибка достаточно мала
-        dt *= 1.5  # Увеличиваем шаг
-    else:
-        dt *= 0.5  # Уменьшаем шаг
+    v2 = ball_velocity + a21 * k1v * dt
+    k2v = acceleration(v2, BALL_RADIUS, BALL_MASS, omega)
+    k2x = v2
+
+    v3 = ball_velocity + a32 * k2v * dt
+    k3v = acceleration(v3, BALL_RADIUS, BALL_MASS, omega)
+    k3x = v3
+    
+    ball_velocity_new = ball_velocity + dt * (b1*k1v + b2*k2v + b3*k3v)
+    ball_position_new = ball_position + dt * (b1*k1x + b2*k2x + b3*k3x)
+    
+    k4v = acceleration(ball_velocity_new, BALL_RADIUS, BALL_MASS, omega)
+    k4x = ball_velocity_new
+    
+    ball_velocity_2nd = ball_velocity + dt * (d1*k1v + d2*k2v + d3*k3v + d4*k4v)
+    ball_position_2nd = ball_position + dt * (d1*k1x + d2*k2x + d3*k3x + d4*k4x)
+    
+    error_velocity = np.linalg.norm(ball_velocity_new - ball_velocity_2nd)
+    error_position = np.linalg.norm(ball_position_new - ball_position_2nd)
+    total_error = error_velocity + error_position
+    
+    if total_error > tolerance + b:
+        dt *= max(0.5, tolerance / (total_error + 1e-10))
+    elif total_error < tolerance - b:
+        dt *= min(1.5, tolerance / (total_error + 1e-10))
+
     return ball_velocity_new, ball_position_new
 
 
