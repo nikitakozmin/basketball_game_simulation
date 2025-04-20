@@ -37,6 +37,7 @@ def euler_method(ball_velocity, ball_position, dt, omega):
     ball_position_new = ball_position + ball_velocity * dt
     ball_velocity_new = ball_velocity + a * dt
     
+
     return ball_velocity_new, ball_position_new
 
 
@@ -112,9 +113,9 @@ def adaptive_step_method(ball_velocity, ball_position, dt, omega, tolerance=1e-4
     error_position = np.linalg.norm(ball_position_new - ball_position_2nd)
     total_error = error_velocity + error_position
     
-    if error > tolerance + b:
+    if total_error > tolerance + b:
         dt *= max(0.5, tolerance / (total_error + 1e-10))
-    elif error < tolerance - b:
+    elif total_error < tolerance - b:
         dt *= min(1.5, tolerance / (total_error + 1e-10))
 
     return ball_velocity_new, ball_position_new
